@@ -1,57 +1,63 @@
-package com.jinxian.flutter_forbidshot;
+package com.jinxian.flutter_forbidshot
 
-import android.content.Context;
-import android.provider.Settings;
-import android.view.WindowManager;
-import android.media.AudioManager;
+import android.content.Context
+import android.provider.Settings
+import android.view.WindowManager
+import android.media.AudioManager
+import io.flutter.plugin.common.MethodCall
+import io.flutter.plugin.common.MethodChannel
+import io.flutter.plugin.common.MethodChannel.MethodCallHandler
+import io.flutter.plugin.common.MethodChannel.Result
+import io.flutter.plugin.common.PluginRegistry.Registrar
 
-import io.flutter.plugin.common.MethodCall;
-import io.flutter.plugin.common.MethodChannel;
-import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
-import io.flutter.plugin.common.MethodChannel.Result;
-import io.flutter.plugin.common.PluginRegistry.Registrar;
-
-/** FlutterForbidshotPlugin */
-public class FlutterForbidshotPlugin implements MethodCallHandler {
-  private Registrar _registrar;
-  private FlutterForbidshotPlugin(Registrar registrar){
-    this._registrar = registrar;
-  }
-  /** Plugin registration. */
-  public static void registerWith(Registrar registrar) {
-    final MethodChannel channel = new MethodChannel(registrar.messenger(), "flutter_forbidshot");
-    channel.setMethodCallHandler(new FlutterForbidshotPlugin(registrar));
-  }
-
-  @Override
-  public void onMethodCall(MethodCall call, Result result) {
-    if (call.method.equals("setOn")) {
-      _registrar.activity().getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
-    } else if(call.method.equals("setOff")){
-      _registrar.activity().getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SECURE);
-    } else if(call.method.equals("volume")){
-      result.success(getVolume());
-    } else if(call.method.equals("setVolume")){
-      double volume = call.argument("volume");
-      setVolume(volume);
-      result.success(null);
+/** FlutterForbidshotPlugin  */
+class FlutterForbidshotPlugin private constructor(registrar: Registrar) : MethodCallHandler {
+    private val _registrar: Registrar
+    @Override
+    fun onMethodCall(call: MethodCall, result: Result) {
+        if (call.method.equals("setOn")) {
+            _registrar.activity().getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        } else if (call.method.equals("setOff")) {
+            _registrar.activity().getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        } else if (call.method.equals("volume")) {
+            result.success(volume)
+        } else if (call.method.equals("setVolume")) {
+            val volume: Double = call.argument("volume")
+            setVolume(volume)
+            result.success(null)
+        }
     }
-  }
 
-  AudioManager audioManager;
-  private float getVolume() {
-    if (audioManager == null) {
-      audioManager = (AudioManager) _registrar.activity().getSystemService(Context.AUDIO_SERVICE);
+    var audioManager: AudioManager? = null
+    private val volume: Float
+        private get() {
+            if (audioManager == null) {
+                audioManager =
+                    _registrar.activity().getSystemService(Context.AUDIO_SERVICE) as AudioManager
+            }
+            val max: Float = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+            val current: Float = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
+            return current / max
+        }
+
+    private fun setVolume(volume: Double) {
+        val max: Int = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+        audioManager.setStreamVolume(
+            AudioManager.STREAM_MUSIC,
+            (max * volume).toInt(),
+            AudioManager.FLAG_PLAY_SOUND
+        )
     }
-    float max = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
-    float current = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
-    float target = current / max;
 
-    return target;
-  }
+    companion object {
+        /** Plugin registration.  */
+        fun registerWith(registrar: Registrar) {
+            val channel = MethodChannel(registrar.messenger(), "flutter_forbidshot")
+            channel.setMethodCallHandler(FlutterForbidshotPlugin(registrar))
+        }
+    }
 
-  private void setVolume(double volume) {
-    int max = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
-    audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, (int) (max * volume), AudioManager.FLAG_PLAY_SOUND);
-  }
+    init {
+        _registrar = registrar
+    }
 }

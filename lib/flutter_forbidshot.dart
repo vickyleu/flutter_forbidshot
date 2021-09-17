@@ -11,14 +11,14 @@ class FlutterForbidshot {
 
 
   // 录屏相关
-  static Future<bool> get iosIsCaptured async {
+  static Future<bool?> get iosIsCaptured async {
     if (Platform.isIOS) {
-      final bool isCaptured = await _methodChannel.invokeMethod('isCaptured') as bool;
+      final bool? isCaptured = await _methodChannel.invokeMethod('isCaptured') as bool?;
       return isCaptured;
     }
   }
 
-  static Stream<String> get iosShotChange {
+  static Stream<String?>? get iosShotChange {
     if (Platform.isIOS) {
       return _eventChannel.receiveBroadcastStream().map((dynamic event) {
         return event;
@@ -40,7 +40,7 @@ class FlutterForbidshot {
   }
 
   //声音相关
-  static Future<double> get volume async => (await _methodChannel.invokeMethod('volume')) as double;
+  static Future<double?> get volume async => (await _methodChannel.invokeMethod('volume')) as double?;
   static Future setVolume(double volume) => _methodChannel.invokeMethod('setVolume', {"volume" : volume});
 
 
