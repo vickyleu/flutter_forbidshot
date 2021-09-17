@@ -24,13 +24,14 @@ if (flutterVersionName == null) {
     flutterVersionName = '1.0'
 }
 buildscript {
+    ext.kotlin_version = '1.4.10'
     repositories {
         google()
         jcenter()
     }
-
     dependencies {
         classpath 'com.android.tools.build:gradle:3.2.1'
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
     }
 }
 
@@ -42,6 +43,7 @@ rootProject.allprojects {
 }
 
 apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
 
 android {
     compileSdkVersion 28
@@ -49,11 +51,15 @@ android {
     defaultConfig {
         minSdkVersion 16
     }
+    sourceSets.main {
+        java.srcDirs = ['src/main/kotlin']
+    }
     lintOptions {
         disable 'InvalidPackage'
     }
 }
 
 dependencies{
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     compileOnly files("$flutterRoot/bin/cache/artifacts/engine/android-x64/flutter.jar")
 }

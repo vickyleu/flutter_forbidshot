@@ -1,28 +1,29 @@
 package com.jinxian.flutter_forbidshot
 
 import android.content.Context
-import android.provider.Settings
-import android.view.WindowManager
 import android.media.AudioManager
+import android.view.WindowManager
+import io.flutter.embedding.engine.plugins.FlutterPlugin
+import io.flutter.embedding.engine.plugins.activity.ActivityAware
+import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
-import io.flutter.plugin.common.PluginRegistry.Registrar
 
 /** FlutterForbidshotPlugin  */
-class FlutterForbidshotPlugin private constructor(registrar: Registrar) : MethodCallHandler {
-    private val _registrar: Registrar
-    @Override
-    fun onMethodCall(call: MethodCall, result: Result) {
+class FlutterForbidshotPlugin :FlutterPlugin, MethodCallHandler,ActivityAware {
+    private var activityAware: ActivityPluginBinding?=null
+    private var channel:MethodChannel?=null
+    override fun onMethodCall(call: MethodCall, result: Result) {
         if (call.method.equals("setOn")) {
-            _registrar.activity().getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+            activityAware?.activity?.getWindow()?.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         } else if (call.method.equals("setOff")) {
-            _registrar.activity().getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+            activityAware?.activity?.getWindow()?.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
         } else if (call.method.equals("volume")) {
             result.success(volume)
         } else if (call.method.equals("setVolume")) {
-            val volume: Double = call.argument("volume")
+            val volume: Double = call.argument("volume")?:0f.toDouble()
             setVolume(volume)
             result.success(null)
         }
@@ -31,33 +32,42 @@ class FlutterForbidshotPlugin private constructor(registrar: Registrar) : Method
     var audioManager: AudioManager? = null
     private val volume: Float
         private get() {
-            if (audioManager == null) {
-                audioManager =
-                    _registrar.activity().getSystemService(Context.AUDIO_SERVICE) as AudioManager
-            }
-            val max: Float = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-            val current: Float = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
+            val max: Float = (audioManager?.getStreamMaxVolume(AudioManager.STREAM_MUSIC)?:0f).toFloat()
+            val current: Float =( audioManager?.getStreamVolume(AudioManager.STREAM_MUSIC)?:0f).toFloat()
             return current / max
         }
 
     private fun setVolume(volume: Double) {
-        val max: Int = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-        audioManager.setStreamVolume(
+        val max: Int = audioManager?.getStreamMaxVolume(AudioManager.STREAM_MUSIC)?:0
+        audioManager?.setStreamVolume(
             AudioManager.STREAM_MUSIC,
             (max * volume).toInt(),
             AudioManager.FLAG_PLAY_SOUND
         )
     }
-
-    companion object {
-        /** Plugin registration.  */
-        fun registerWith(registrar: Registrar) {
-            val channel = MethodChannel(registrar.messenger(), "flutter_forbidshot")
-            channel.setMethodCallHandler(FlutterForbidshotPlugin(registrar))
-        }
+    override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+        channel = MethodChannel(binding.binaryMessenger, "flutter_forbidshot")
+        channel?.setMethodCallHandler(this)
     }
 
-    init {
-        _registrar = registrar
+    override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+        channel?.setMethodCallHandler(null)
+    }
+
+    override fun onAttachedToActivity(binding: ActivityPluginBinding) {
+        activityAware=binding
+        audioManager =binding.activity.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+    }
+
+    override fun onDetachedFromActivity() {
+        activityAware=null
+    }
+
+    override fun onDetachedFromActivityForConfigChanges() {
+        onDetachedFromActivity()
+    }
+
+    override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
+        onAttachedToActivity(binding)
     }
 }
